@@ -122,7 +122,7 @@ van.derive(() => {
         state.val.profile != undefined &&
         followProfileEnabled.val == true
       ) {
-        var profileUpdate = followProfile(
+        const profileUpdate = followProfile(
           state.val.profile!,
           newState.roast,
         );
