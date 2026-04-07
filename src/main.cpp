@@ -13,11 +13,11 @@
 #include "api.h"
 #include "config.h"
 #include "display.h"
-#include "fan.h"
-#include "heater.h"
 #include "logging.h"
 #include "sensors.h"
 #include "wifi_setup.h"
+#include "Control.h"
+#include "RoasterPrefs.h"
 
 #define PIN 48
 Adafruit_NeoPixel pixels(1, PIN);
@@ -102,9 +102,12 @@ void setup(void) {
   pixels.clear();
   pixels.setPixelColor(0, pixels.Color(0, 5, 0));
   pixels.show();
-
-  initFan();
-  initHeater();
+  setupPreferences();
+  setupControl(
+    getDoubleValue("kp",1),
+    getDoubleValue("ki",0.1),
+    getDoubleValue("kd",0.01)
+  );
 }
 
 void loop(void) {
@@ -112,5 +115,7 @@ void loop(void) {
   ws.cleanupClients();
   delay(10);
   takeReadings();
-  updateHeater();
+  float etbt[3];
+  getETBTReadings(etbt);
+  temperatureLoop(etbt);
 }

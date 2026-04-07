@@ -59,7 +59,6 @@ void takeReadings() {
     takeBTReadings(dt);
     lastReadTime = millis();
     float internal = tcExhaust.readInternal();
-    logf("internal: %.2f\n", internal);
     readings[2] = internal;
     xSemaphoreGiveRecursive(mtx);
   }
@@ -78,7 +77,6 @@ void takeETReadings(float dt) {
       log("FAULT: Thermocouple is short-circuited to VCC.");
     return;
   }
-  logf("Exhaust Temp: %.2f\n", exhaustTemp);
   readings[0] = exhaustFilter.process(exhaustTemp);
 }
 
@@ -95,7 +93,6 @@ void takeBTReadings(float dt) {
       log("FAULT: Thermocouple is short-circuited to VCC.");
     return;
   }
-  logf("Bean Temp: %.2f\n", beanTemp);
   readings[1] = beansFilter.process(beanTemp);
 }
 
