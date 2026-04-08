@@ -322,15 +322,20 @@ void AutoTunePID::calculateTyreusLuybenGains()
 
 void AutoTunePID::calculateLambdaTuningGains()
 {
-    // Ensure lambda is set and valid
-    if (_lambda <= 0) {
-        _lambda = 0.5f * _processTimeConstant; // Default value for lambda
-    }
+  // Ensure lambda is set and valid
+  if (_lambda <= 0) {
+    _lambda = 0.5f * _processTimeConstant; // Default value for lambda
+  }
 
-    // Calculate Kp, Ki, and Kd using the Lambda Tuning (CLD) formula
-    _kp = _processTimeConstant / (_ultimateGain * (_lambda + _deadTime));
-    _ki = _kp / _processTimeConstant;
-    _kd = _kp * 0.5f * _deadTime;
+  // Calculate Kp, Ki, and Kd using the Lambda Tuning (CLD) formula
+  _kp = _processTimeConstant / (_ultimateGain * (_lambda + _deadTime));
+  _ki = _kp / _processTimeConstant;
+  _kd = _kp * 0.5f * _deadTime;
+}
+
+void AutoTunePID::resetError()
+{
+  _error = 0;
 }
 
 void AutoTunePID::computePID()

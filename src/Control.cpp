@@ -28,6 +28,9 @@ void setPidValues(float kp, float ki, float kd) {
 }
 
 void setSetpoint(float setpoint) {
+  if (_autotune.getSetpoint() == 0 && setpoint > 0.) {
+    _autotune.resetError();
+  }
   if (setpoint > 0.) {
     _autotune.setSetpoint(min(setpoint,250.f));
     _autotune.setOperationalMode(OperationalMode::Auto);

@@ -60,6 +60,7 @@ public:
     void setOscillationMode(OscillationMode mode); // Set the oscillation mode for auto-tuning
     void setOscillationSteps(int steps); // Set the number of oscillation steps for auto-tuning
     void setLambda(float lambda); // Set the lambda parameter for Lambda Tuning (CLD)
+    void resetError();
 
     // Runtime methods
     void update(float currentInput); // Update the PID controller with the current input
