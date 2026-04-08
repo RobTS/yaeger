@@ -5,8 +5,12 @@
 
 
 AutoTunePID _autotune = AutoTunePID(0, 90, TuningMethod::ZieglerNichols);
-
 TemperatureTarget _temperatureTarget = TemperatureTarget::ET;
+const uint8_t noUpdateBeforeMs = 20; // 50 Hz
+unsigned long lastUpdate = 0;
+bool tuningEnabled = false;
+bool hasResults = false;
+
 
 void setupControl(float kp, float ki, float kd) {
   initHeater();
@@ -25,7 +29,7 @@ void setPidValues(float kp, float ki, float kd) {
 
 void setSetpoint(float setpoint) {
   if (setpoint > 0.) {
-    _autotune.setSetpoint(setpoint);
+    _autotune.setSetpoint(min(setpoint,250.f));
     _autotune.setOperationalMode(OperationalMode::Auto);
   } else {
     _autotune.setSetpoint(0.);
@@ -38,6 +42,30 @@ void setHeater(float value) {
   _autotune.setOperationalMode(OperationalMode::Manual);
   _autotune.setSetpoint(0.);
   _autotune.setManualOutput(value);
+}
+
+void startAutotune() {
+  _autotune.setOperationalMode(OperationalMode::Tune);
+  tuningEnabled = true;
+}
+
+void resetAutotune() {
+  hasResults = false;
+}
+
+bool hasAutotuneResults() {
+  return hasResults;
+}
+float getKp() {
+  return _autotune.getKp();
+}
+
+float getKi() {
+  return _autotune.getKi();
+}
+
+float getKd() {
+  return _autotune.getKd();
 }
 
 void setFan(long value) {
@@ -76,6 +104,8 @@ const char *getMode() {
   const char *result;
   if (_autotune.getOperationalMode() == OperationalMode::Auto) {
     result = "PID";
+  } else if  (_autotune.getOperationalMode() == OperationalMode::Tune) {
+    result = "Tuning";
   } else {
     result = "Manual";
   }
@@ -83,6 +113,16 @@ const char *getMode() {
 }
 
 void temperatureLoop(float etbt[3]) {
+  if (tuningEnabled && _autotune.getOperationalMode() != OperationalMode::Tune) {
+    // tuning completed, set status accordingly
+    tuningEnabled = false;
+    hasResults = true;
+  }
+  unsigned long now = millis();
+  unsigned long dt = (now - lastUpdate);
+  if (dt < noUpdateBeforeMs) {
+    return;
+  }
   float temp = 0.;
   if (_temperatureTarget == TemperatureTarget::BT) {
     temp = etbt[1];
@@ -99,5 +139,4 @@ void temperatureLoop(float etbt[3]) {
     setFan(30);
   }
   setHeaterPower(heaterValue);
-  updateHeater();
 }

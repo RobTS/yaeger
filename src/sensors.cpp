@@ -4,9 +4,9 @@
 #include "freertos/semphr.h"
 #include "logging.h"
 #include <Adafruit_MAX31855.h>
-#include <NexgenFilter.h>
+//#include <NexgenFilter.h>
 #include <SPI.h>
-#include <MovingAverageFilter.h>
+//#include <MovingAverageFilter.h>
 #include <cstdint>
 
 void getChipTemp() {
@@ -19,14 +19,8 @@ void getChipTemp() {
 Adafruit_MAX31855 tcExhaust(MAX1CLK, MAX1CS, MAX1DO);
 Adafruit_MAX31855 tcBeans(MAX2CLK, MAX2CS, MAX2DO);
 
-const uint8_t kMovingAverageWindowSize = 10;
-const uint8_t kSamplingWindowDuration = 400;
-
-MovingAverageFilter exhaustFilter(kMovingAverageWindowSize);
-MovingAverageFilter beansFilter(kMovingAverageWindowSize);
-/*SimpleKalmanFilter exhaustFilter(80, 80, 3);*/
-/*SimpleKalmanFilter beansFilter(80, 80, 3);*/
-unsigned long lastReadTime = 0;
+const uint8_t noUpdateBeforeMs = 200; // 50 Hz
+unsigned long lastUpdate = 0;
 
 SemaphoreHandle_t mtx;
 StaticSemaphore_t mtx_buffer;
@@ -50,14 +44,15 @@ void startSensors() {
 }
 
 void takeReadings() {
-  float dt = (millis() - lastReadTime);
-  if (dt < kSamplingWindowDuration) {
+  unsigned long now = millis();
+  unsigned long dt = (now - lastUpdate);
+  if (dt < noUpdateBeforeMs) {
     return;
   }
   if (xSemaphoreTakeRecursive(mtx, portMAX_DELAY) == pdTRUE) {
     takeETReadings(dt);
     takeBTReadings(dt);
-    lastReadTime = millis();
+    lastUpdate = now;
     float internal = tcExhaust.readInternal();
     readings[2] = internal;
     xSemaphoreGiveRecursive(mtx);
@@ -77,7 +72,7 @@ void takeETReadings(float dt) {
       log("FAULT: Thermocouple is short-circuited to VCC.");
     return;
   }
-  readings[0] = exhaustFilter.process(exhaustTemp);
+  readings[0] = exhaustTemp;//exhaustFilter.process(exhaustTemp);
 }
 
 void takeBTReadings(float dt) {
@@ -93,7 +88,7 @@ void takeBTReadings(float dt) {
       log("FAULT: Thermocouple is short-circuited to VCC.");
     return;
   }
-  readings[1] = beansFilter.process(beanTemp);
+  readings[1] = beanTemp;//beansFilter.process(beanTemp);
 }
 
 void getETBTReadings(float *readingsBuf) {

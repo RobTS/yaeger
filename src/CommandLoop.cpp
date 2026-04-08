@@ -93,6 +93,10 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
       setFan(val);
     }
 
+    if (command != NULL && strncmp(command, "autotune", 8) == 0) {
+      startAutotune();
+    }
+
     if (command != NULL && strncmp(command, "setPreferences", 14) == 0) {
       if (!doc["pidKp"].isNull()) {
         double pidKp = doc["pidKp"].as<double>();
@@ -144,6 +148,9 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
       data["Target"] = getTemperatureTarget();
       data["Mode"] = getMode();
       data["FanVal"] = getFan();
+      data["Kp"] = getKp();
+      data["Ki"] = getKi();
+      data["Kd"] = getKd();
     }
 
     char buffer[200];                        // create temp buffer

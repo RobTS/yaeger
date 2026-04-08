@@ -1,5 +1,4 @@
 #include "logging.h"
-#include "sensors.h"
 #include "wifi_setup.h"
 #include <ESPAsyncWebServer.h>
 #include <Preferences.h>
