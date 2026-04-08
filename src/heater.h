@@ -1,2 +1,2 @@
 void initHeater();
-void setHeaterPower(int power);
+void setHeaterPower(float power);

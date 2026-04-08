@@ -54,16 +54,15 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
     long ln_id = doc["id"].as<long>();
     // Get BurnerVal from Artisan over Websocket
     if ((doc["Mode"].isNull() || strncmp(doc["Mode"].as<const char *>(), "Manual", 6) == 0) && !doc["BurnerVal"].isNull()) {
-      long val = doc["BurnerVal"].as<long>();
+      float val = doc["BurnerVal"].as<float>();
       logf("BurnerVal: %d\n", val);
       // DimmerVal = doc["BurnerVal"].as<long>();
       setHeater(val);
     }
-    if (!doc["Mode"].isNull() && strncmp(doc["Mode"].as<const char *>(), "PID", 3) == 0 && !doc["PidVal"].isNull()) {
-      long val = doc["PidVal"];
-      logf("PidVal: %d\n", val);
-      // DimmerVal = doc["BurnerVal"].as<long>();
-      setSetpoint(val);
+    if (!doc["Mode"].isNull() && strncmp(doc["Mode"].as<const char *>(), "PID", 3) == 0 && !doc["Setpoint"].isNull()) {
+      float setpoint = doc["Setpoint"].as<float>();
+      logf("Setpoint: %d\n", setpoint);
+      setSetpoint(setpoint);
     }
     if (!doc["Target"].isNull()) {
       const char *target = doc["Target"].as<const char *>();
@@ -75,9 +74,9 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
         setTemperatureTarget(TemperatureTarget::MAX);
     }
     if (!doc["FanVal"].isNull()) {
-      long val = doc["FanVal"].as<long>();
-      logf("FanVal: %d\n", val);
-      setFan(val);
+      float fanVal = doc["FanVal"].as<float>();
+      logf("FanVal: %d\n", fanVal);
+      setFan(fanVal);
     }
 
     // Send Values to Artisan over Websocket
@@ -94,22 +93,21 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
     }
 
     if (command != NULL && strncmp(command, "autotune", 8) == 0) {
+      if (getFan() < 30) setFan(60);
       startAutotune();
     }
 
     if (command != NULL && strncmp(command, "setPreferences", 14) == 0) {
-      if (!doc["pidKp"].isNull()) {
-        double pidKp = doc["pidKp"].as<double>();
-        setDoubleValue("pidKp", pidKp);
+      if (!doc["pidKp"].isNull() && !doc["pidKi"].isNull() && !doc["pidKd"].isNull()) {
+        float pidKp = doc["pidKp"].as<float>();
+        float pidKi = doc["pidKi"].as<float>();
+        float pidKd = doc["pidKd"].as<float>();
+        setFloatValue("pidKp", pidKp);
+        setFloatValue("pidKi", pidKi);
+        setFloatValue("pidKd", pidKd);
+        setPidValues(pidKp, pidKi, pidKd);
       }
-      if (!doc["pidKi"].isNull()) {
-        double pidKi = doc["pidKi"].as<double>();
-        setDoubleValue("pidKi", pidKi);
-      }
-      if (!doc["pidKd"].isNull()) {
-        double pidKd = doc["pidKd"].as<double>();
-        setDoubleValue("pidKd", pidKd);
-      }
+
       if (!doc["cooldownFanSpeed"].isNull()) {
         long cooldownFanSpeed = doc["cooldownFanSpeed"].as<long>();
         logf("cooldownFanSpeed: %d\n", cooldownFanSpeed);
@@ -120,16 +118,12 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
     if (command != NULL && (strncmp(command, "setPreferences", 14) == 0 || strncmp(command, "getPreferences", 14) == 0)) {
       JsonObject root = doc.to<JsonObject>();
       JsonObject data = root["data"].to<JsonObject>();
-      double p = getDoubleValue("pidKp", 1.0);
-      double i = getDoubleValue("pidKi", 0.1);
-      double d = getDoubleValue("pidKd", 0.01);
 
       root["id"] = ln_id;
       data["type"] = "preferences";
-      data["pidKp"] = p;
-      data["pidKi"] = i;
-      data["pidKd"] = d;
-      setPidValues(p,i,d);
+      data["pidKp"] = getFloatValue("pidKp", 1.0);
+      data["pidKi"] = getFloatValue("pidKi", 0.1);
+      data["pidKd"] = getFloatValue("pidKd", 0.01);
       data["cooldownFanSpeed"] = getLongValue("coolFanSpeed", 65);
     }
 
@@ -148,9 +142,9 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
       data["Target"] = getTemperatureTarget();
       data["Mode"] = getMode();
       data["FanVal"] = getFan();
-      data["Kp"] = getKp();
-      data["Ki"] = getKi();
-      data["Kd"] = getKd();
+      data["pidKp"] = getKp();
+      data["pidKi"] = getKi();
+      data["pidKd"] = getKd();
     }
 
     char buffer[200];                        // create temp buffer

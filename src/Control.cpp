@@ -45,6 +45,8 @@ void setHeater(float value) {
 }
 
 void startAutotune() {
+  setFan(55);
+  _autotune.setSetpoint(140);
   _autotune.setOperationalMode(OperationalMode::Tune);
   tuningEnabled = true;
 }
@@ -68,11 +70,11 @@ float getKd() {
   return _autotune.getKd();
 }
 
-void setFan(long value) {
+void setFan(float value) {
   setFanSpeed(value);
 }
 
-long getFan() {
+float getFan() {
   return getFanSpeed();
 }
 
@@ -117,6 +119,8 @@ void temperatureLoop(float etbt[3]) {
     // tuning completed, set status accordingly
     tuningEnabled = false;
     hasResults = true;
+    setFan(30.f);
+    setSetpoint(0);
   }
   unsigned long now = millis();
   unsigned long dt = (now - lastUpdate);
@@ -136,7 +140,7 @@ void temperatureLoop(float etbt[3]) {
   _autotune.update(temp);
   float heaterValue = _autotune.getOutput();
   if (heaterValue > 0. && getFan() <= 10) {
-    setFan(30);
+    setFan(30.f);
   }
   setHeaterPower(heaterValue);
 }

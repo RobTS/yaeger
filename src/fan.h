@@ -1,3 +1,3 @@
 void initFan();
-void setFanSpeed(int speed);
-int getFanSpeed();
+void setFanSpeed(float speed);
+float getFanSpeed();

@@ -101,9 +101,9 @@ void setup() {
   pixels.show();
   setupPreferences();
   setupControl(
-    getDoubleValue("kp",1),
-    getDoubleValue("ki",0.1),
-    getDoubleValue("kd",0.01)
+    getFloatValue("pidKp",1),
+    getFloatValue("pidKi",0.1),
+    getFloatValue("pidKd",0.01)
   );
 }
 
@@ -116,9 +116,9 @@ void loop() {
   getETBTReadings(etbt);
   temperatureLoop(etbt);
   if (hasAutotuneResults()) {
-    setDoubleValue("kp", getKp());
-    setDoubleValue("ki", getKi());
-    setDoubleValue("kd", getKd());
-    resetAutoTune();
+    setFloatValue("pidKp", getKp());
+    setFloatValue("pidKi", getKi());
+    setFloatValue("pidKd", getKd());
+    resetAutotune();
   }
 }

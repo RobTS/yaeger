@@ -10,6 +10,6 @@ void initHeater() {
   heaterPwm.setDutyNormalized(0);
 }
 
-void setHeaterPower(int power) {
+void setHeaterPower(float power) {
   heaterPwm.setDutyNormalized(power * 0.01f);
 }

@@ -20,7 +20,7 @@ Adafruit_MAX31855 tcExhaust(MAX1CLK, MAX1CS, MAX1DO);
 Adafruit_MAX31855 tcBeans(MAX2CLK, MAX2CS, MAX2DO);
 
 const uint8_t noUpdateBeforeMs = 200; // 50 Hz
-unsigned long lastUpdate = 0;
+unsigned long lastSensorUpdate = 0;
 
 SemaphoreHandle_t mtx;
 StaticSemaphore_t mtx_buffer;
@@ -45,14 +45,14 @@ void startSensors() {
 
 void takeReadings() {
   unsigned long now = millis();
-  unsigned long dt = (now - lastUpdate);
+  unsigned long dt = (now - lastSensorUpdate);
   if (dt < noUpdateBeforeMs) {
     return;
   }
   if (xSemaphoreTakeRecursive(mtx, portMAX_DELAY) == pdTRUE) {
     takeETReadings(dt);
     takeBTReadings(dt);
-    lastUpdate = now;
+    lastSensorUpdate = now;
     float internal = tcExhaust.readInternal();
     readings[2] = internal;
     xSemaphoreGiveRecursive(mtx);

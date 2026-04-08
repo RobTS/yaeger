@@ -225,7 +225,7 @@ void AutoTunePID::performAutoTune(float currentInput)
     }
 
     // Toggle output every second to induce oscillations
-    if (currentTime - lastToggleTime >= 1000) {
+    if (currentTime - lastToggleTime >= 2000) {
         outputState = !outputState;
         _output = outputState ? highOutput : lowOutput;
         lastToggleTime = currentTime;

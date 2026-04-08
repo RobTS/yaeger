@@ -29,13 +29,13 @@ const char *getTemperatureTarget();
 
 const char *getMode();
 
-void setFan(long value);
+void setFan(float value);
 
-long getFan();
+float getFan();
 
 float getKp();
 float getKi();
 float getKd();
 
-void resetAutoTune();
+void resetAutotune();
 bool hasAutotuneResults();

@@ -4,19 +4,19 @@
 Preferences preferences;
 
 void setupPreferences() {
-  preferences.begin("preferences");
+  preferences.begin("preferences-v1");
 }
 
-void setDoubleValue(const char* name, double value) {
-  preferences.putDouble(name, value);
+void setFloatValue(const char* name, float value) {
+  preferences.putFloat(name, value);
 }
 
-double getDoubleValue(const char* name, double defaultValue) {
-  return preferences.getDouble(name, defaultValue);
+float getFloatValue(const char* name, float defaultValue) {
+  return preferences.getFloat(name, defaultValue);
 }
 
 void setLongValue(const char* name, long value) {
-  preferences.putDouble(name, value);
+  preferences.putLong(name, value);
 }
 
 long getLongValue(const char* name, long defaultValue) {

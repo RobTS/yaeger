@@ -4,18 +4,18 @@
 
 ESP32_EnhancedPWM fanPwm;
 
-int currentFanSpeed = 0;
+float currentFanSpeed = 0;
 
 void initFan() {
   fanPwm.begin(FAN_PIN, 1, 20000, 8, false, LEDC_AUTO_CLK);
   fanPwm.setDutyNormalized(0);
 }
 
-void setFanSpeed(int power) {
-  currentFanSpeed = max(min(power,100),0);
+void setFanSpeed(float power) {
+  currentFanSpeed = max(min(power,100.f),0.f);
   fanPwm.setDutyNormalized(currentFanSpeed * 0.01f);
 }
 
-int getFanSpeed() {
+float getFanSpeed() {
   return currentFanSpeed;
 }
