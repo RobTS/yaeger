@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "AutoTunePID.h"
 
 enum class TemperatureTarget {
   ET,
@@ -28,6 +29,8 @@ float getSetpoint();
 const char *getTemperatureTarget();
 
 const char *getMode();
+
+void setMode(OperationalMode mode);
 
 void setFan(float value);
 

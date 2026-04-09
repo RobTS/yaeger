@@ -31,19 +31,10 @@ void setSetpoint(float setpoint) {
   if (_autotune.getSetpoint() == 0 && setpoint > 0.) {
     _autotune.resetError();
   }
-  if (setpoint > 0.) {
-    _autotune.setSetpoint(min(setpoint,250.f));
-    _autotune.setOperationalMode(OperationalMode::Auto);
-  } else {
-    _autotune.setSetpoint(0.);
-    _autotune.setOperationalMode(OperationalMode::Manual);
-    _autotune.setManualOutput(0.);
-  }
+  _autotune.setSetpoint(max(min(setpoint,250.f),0.f));
 }
 
 void setHeater(float value) {
-  _autotune.setOperationalMode(OperationalMode::Manual);
-  _autotune.setSetpoint(0.);
   _autotune.setManualOutput(value);
 }
 
@@ -115,6 +106,10 @@ const char *getMode() {
     result = "Manual";
   }
   return result;
+}
+
+void setMode(OperationalMode mode) {
+  _autotune.setOperationalMode(mode);
 }
 
 void temperatureLoop(float etbt[3]) {

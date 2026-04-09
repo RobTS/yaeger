@@ -52,18 +52,35 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
     deserializeJson(doc, msg);
 
     long ln_id = doc["id"].as<long>();
-    // Get BurnerVal from Artisan over Websocket
-    if ((doc["Mode"].isNull() || strncmp(doc["Mode"].as<const char *>(), "Manual", 6) == 0) && !doc["BurnerVal"].isNull()) {
+
+
+    if (!doc["Mode"].isNull() && strncmp(doc["Mode"].as<const char *>(), "Manual", 6) == 0) {
+      setMode(OperationalMode::Manual);
+    }
+
+    if (!doc["Mode"].isNull() && strncmp(doc["Mode"].as<const char *>(), "PID", 3) == 0) {
+      setMode(OperationalMode::Auto);
+    }
+
+    if (!doc["BurnerVal"].isNull()) {
       float val = doc["BurnerVal"].as<float>();
       logf("BurnerVal: %d\n", val);
       // DimmerVal = doc["BurnerVal"].as<long>();
       setHeater(val);
     }
-    if (!doc["Mode"].isNull() && strncmp(doc["Mode"].as<const char *>(), "PID", 3) == 0 && !doc["Setpoint"].isNull()) {
+
+    if (!doc["Setpoint"].isNull()) {
       float setpoint = doc["Setpoint"].as<float>();
       logf("Setpoint: %d\n", setpoint);
       setSetpoint(setpoint);
     }
+
+    if (!doc["FanVal"].isNull()) {
+      float fanVal = doc["FanVal"].as<float>();
+      logf("FanVal: %d\n", fanVal);
+      setFan(fanVal);
+    }
+
     if (!doc["Target"].isNull()) {
       const char *target = doc["Target"].as<const char *>();
       if (strncmp(target, "BT", 2) == 0)
@@ -73,21 +90,16 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
       if (strncmp(target, "MAX", 3) == 0)
         setTemperatureTarget(TemperatureTarget::MAX);
     }
-    if (!doc["FanVal"].isNull()) {
-      float fanVal = doc["FanVal"].as<float>();
-      logf("FanVal: %d\n", fanVal);
-      setFan(fanVal);
-    }
 
     // Send Values to Artisan over Websocket
     const char *command = doc["command"].as<const char *>();
     if (command != NULL && strncmp(command, "setBurner", 9) == 0) {
-      long val = doc["value"].as<long>();
+      float val = doc["value"].as<float>();
       logf("BurnerVal: %d\n", val);
       setHeater(val);
     }
     if (command != NULL && strncmp(command, "setFan", 6) == 0) {
-      long val = doc["value"].as<long>();
+      float val = doc["value"].as<float>();
       logf("FanVal: %d\n", val);
       setFan(val);
     }
