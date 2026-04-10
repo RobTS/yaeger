@@ -1,3 +1,8 @@
+/**
+* Copied from: https://github.com/lily-osp/AutoTunePID while an issue is open with them
+ */
+
+
 #ifndef AUTOTUNEPID_H
 #define AUTOTUNEPID_H
 

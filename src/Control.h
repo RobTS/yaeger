@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "AutoTunePID.h"
+#include "vendor/AutoTunePID.h"
 
 enum class TemperatureTarget {
   ET,

@@ -1,5 +1,5 @@
 #include "Control.h"
-#include "AutoTunePID.h"
+#include "vendor/AutoTunePID.h"
 #include "heater.h"
 #include "fan.h"
 

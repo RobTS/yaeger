@@ -1,3 +1,8 @@
+/**
+* Copied from (adaptions for latest Arduino framework were necessary): https://github.com/CastilloDelSol/ESP32_EnhancedPWM
+ */
+
+
 /****************************************************************************************************************************
   ESP32_EnhancedPWM.h
   For ESP32, ESP32_S2, ESP32_S3, ESP32_C3 boards with ESP32 core v2.0.0+

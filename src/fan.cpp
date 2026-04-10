@@ -1,5 +1,5 @@
 
-#include <ESP32_EnhancedPWM.h>
+#include <vendor/ESP32_EnhancedPWM.h>
 #include "config.h"
 
 ESP32_EnhancedPWM fanPwm;

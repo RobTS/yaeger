@@ -1,7 +1,7 @@
 #include "heater.h"
 #include "config.h"
 #include <Arduino.h>
-#include <ESP32_EnhancedPWM.h>
+#include <vendor/ESP32_EnhancedPWM.h>
 
 ESP32_EnhancedPWM heaterPwm;
 
