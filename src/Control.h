@@ -10,6 +10,23 @@ enum class TemperatureTarget {
   MAX
 };
 
+inline const char* TargetToString(TemperatureTarget t)
+{
+  switch (t)
+  {
+    case TemperatureTarget::BT:   return "BT";
+    case TemperatureTarget::MAX: return "MAX";
+    default:      return "ET";
+  }
+}
+
+inline TemperatureTarget StringToTarget(const String& s)
+{
+  if (s.equals("BT"))  return TemperatureTarget::BT;
+  if (s.equals("MAX"))  return TemperatureTarget::MAX;
+  return TemperatureTarget::ET;
+}
+
 class Control {
 private:
   AutoTunePID _autotune;
@@ -25,11 +42,8 @@ private:
   float getTemperature(const float etbt[3]) const;
 
 public:
-  Control(float kp = 0, float ki = 0, float kd = 0);
+  Control(float kp, float ki, float kd, TemperatureTarget target);
   ~Control() = default;
-
-  // Setup and initialization
-  void setup(float kp, float ki, float kd);
 
   // PID gain configuration
   void setPidValues(float kp, float ki, float kd);

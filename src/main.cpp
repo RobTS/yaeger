@@ -94,9 +94,10 @@ void setup() {
 
 
   control = new Control(
-    preferences.getFloat("pidKp",1),
-    preferences.getFloat("pidKi",0.1),
-    preferences.getFloat("pidKd",0.01)
+    preferences.getFloat(pidPKey,1),
+    preferences.getFloat(pidIKey,0.1),
+    preferences.getFloat(pidDKey,0.01),
+    StringToTarget(preferences.getString(temperatureTargetKey,"ET"))
   );
 
   // WebSocket handler

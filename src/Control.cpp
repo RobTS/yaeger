@@ -1,18 +1,14 @@
 #include "Control.h"
 #include "config.h"
 
-Control::Control(float kp, float ki, float kd)
+Control::Control(float kp, float ki, float kd, TemperatureTarget target)
   : _autotune(0, 90, TuningMethod::ZieglerNichols),
-    _temperatureTarget(TemperatureTarget::ET),
+    _temperatureTarget(target),
     lastUpdate(0),
     tuningEnabled(false),
     hasResults(false),
     _fan(FAN_PIN, 20000),
     _heater(HEATER_PIN, 50) {
-  setup(kp, ki, kd);
-}
-
-void Control::setup(float kp, float ki, float kd) {
   _autotune.setManualGains(kp, ki, kd);
   _autotune.enableAntiWindup(true, 0.8);
   _autotune.setOscillationMode(OscillationMode::Normal);
@@ -20,6 +16,7 @@ void Control::setup(float kp, float ki, float kd) {
   _autotune.setOperationalMode(OperationalMode::Manual);
   _autotune.setManualOutput(0.);
 }
+
 
 void Control::setPidValues(float kp, float ki, float kd) {
   _autotune.setManualGains(kp, ki, kd);

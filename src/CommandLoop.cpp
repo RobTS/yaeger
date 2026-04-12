@@ -82,13 +82,10 @@ void WSRequestHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *c
       }
 
       if (!doc["Target"].isNull()) {
-        const char *target = doc["Target"].as<const char *>();
-        if (strncmp(target, "BT", 2) == 0)
-          control->setTemperatureTarget(TemperatureTarget::BT);
-        if (strncmp(target, "ET", 2) == 0)
-          control->setTemperatureTarget(TemperatureTarget::ET);
-        if (strncmp(target, "MAX", 3) == 0)
-          control->setTemperatureTarget(TemperatureTarget::MAX);
+        String targetInput = doc["Target"];
+        auto target = StringToTarget(targetInput);
+        control->setTemperatureTarget(TemperatureTarget::BT);
+        preferences->putString(temperatureTargetKey, targetInput);
       }
 
       // Send Values to Artisan over Websocket
