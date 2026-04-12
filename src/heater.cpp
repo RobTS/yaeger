@@ -6,7 +6,7 @@
 ESP32_EnhancedPWM heaterPwm;
 
 void initHeater() {
-  heaterPwm.begin(HEATER_PIN, 0, 1, 8, false, LEDC_AUTO_CLK);
+  heaterPwm.begin(HEATER_PIN, 0, 50, 8, false, LEDC_AUTO_CLK);
   heaterPwm.setDutyNormalized(0);
 }
 
