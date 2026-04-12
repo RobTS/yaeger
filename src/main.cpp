@@ -1,6 +1,5 @@
 
 #include <Adafruit_NeoPixel.h>
-#include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
 #include <ElegantOTA.h> //https://github.com/ayushsharma82/AsyncElegantOTA
 #include <LittleFS.h>
@@ -8,16 +7,14 @@
 #include "AsyncWebSocket.h"
 #include "CommandLoop.h"
 #include "HardwareSerial.h"
-#include "IPAddress.h"
 #include "WiFiType.h"
 #include "api.h"
-#include "config.h"
 #include "display.h"
-#include "fan.h"
-#include "heater.h"
 #include "logging.h"
 #include "sensors.h"
 #include "wifi_setup.h"
+#include "Control.h"
+#include "RoasterPrefs.h"
 
 #define PIN 48
 Adafruit_NeoPixel pixels(1, PIN);
@@ -61,13 +58,13 @@ void onOTAEnd(bool success) {
   /*pixels.show();*/
 }
 
-void setup(void) {
+void setup() {
   Serial.begin(115200);
   delay(1000); // Take some time to open up the Serial Monitor
   startSensors();
   pixels.begin();
   pixels.clear();
-  pixels.setPixelColor(0, pixels.Color(5, 0, 0));
+  pixels.setPixelColor(0, Adafruit_NeoPixel::Color(5, 0, 0));
   pixels.show();
 
   // Wait for connection
@@ -100,17 +97,28 @@ void setup(void) {
   server.begin();
   log("HTTP server started");
   pixels.clear();
-  pixels.setPixelColor(0, pixels.Color(0, 5, 0));
+  pixels.setPixelColor(0, Adafruit_NeoPixel::Color(0, 5, 0));
   pixels.show();
-
-  initFan();
-  initHeater();
+  setupPreferences();
+  setupControl(
+    getFloatValue("pidKp",1),
+    getFloatValue("pidKi",0.1),
+    getFloatValue("pidKd",0.01)
+  );
 }
 
-void loop(void) {
+void loop() {
   ElegantOTA.loop();
   ws.cleanupClients();
   delay(10);
   takeReadings();
-  updateHeater();
+  float etbt[3];
+  getETBTReadings(etbt);
+  temperatureLoop(etbt);
+  if (hasAutotuneResults()) {
+    setFloatValue("pidKp", getKp());
+    setFloatValue("pidKi", getKi());
+    setFloatValue("pidKd", getKd());
+    resetAutotune();
+  }
 }
