@@ -6,6 +6,6 @@ node_modules
 .nvim
 **/.DS_Store
 local.config.ts
-data/
+.idea/
 Credentials.h
 reyaeger.zip
