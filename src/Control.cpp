@@ -1,20 +1,18 @@
 #include "Control.h"
-#include "vendor/AutoTunePID.h"
-#include "heater.h"
-#include "fan.h"
+#include "config.h"
 
+Control::Control(float kp, float ki, float kd)
+  : _autotune(0, 90, TuningMethod::ZieglerNichols),
+    _temperatureTarget(TemperatureTarget::ET),
+    lastUpdate(0),
+    tuningEnabled(false),
+    hasResults(false),
+    _fan(FAN_PIN, 20000),
+    _heater(HEATER_PIN, 50) {
+  setup(kp, ki, kd);
+}
 
-AutoTunePID _autotune = AutoTunePID(0, 90, TuningMethod::ZieglerNichols);
-TemperatureTarget _temperatureTarget = TemperatureTarget::ET;
-const uint8_t noUpdateBeforeMs = 20; // 50 Hz
-unsigned long lastUpdate = 0;
-bool tuningEnabled = false;
-bool hasResults = false;
-
-
-void setupControl(float kp, float ki, float kd) {
-  initHeater();
-  initFan();
+void Control::setup(float kp, float ki, float kd) {
   _autotune.setManualGains(kp, ki, kd);
   _autotune.enableAntiWindup(true, 0.8);
   _autotune.setOscillationMode(OscillationMode::Normal);
@@ -23,68 +21,69 @@ void setupControl(float kp, float ki, float kd) {
   _autotune.setManualOutput(0.);
 }
 
-void setPidValues(float kp, float ki, float kd) {
+void Control::setPidValues(float kp, float ki, float kd) {
   _autotune.setManualGains(kp, ki, kd);
 }
 
-void setSetpoint(float setpoint) {
+void Control::setSetpoint(float setpoint) {
   if (_autotune.getSetpoint() == 0 && setpoint > 0.) {
     _autotune.resetError();
   }
-  _autotune.setSetpoint(max(min(setpoint,250.f),0.f));
+  _autotune.setSetpoint(max(min(setpoint, 250.f), 0.f));
 }
 
-void setHeater(float value) {
+void Control::setHeater(float value) {
   _autotune.setManualOutput(value);
 }
 
-void startAutotune() {
+void Control::startAutotune() {
   setFan(55);
   _autotune.setSetpoint(140);
   _autotune.setOperationalMode(OperationalMode::Tune);
   tuningEnabled = true;
 }
 
-void resetAutotune() {
+void Control::resetAutotune() {
   hasResults = false;
 }
 
-bool hasAutotuneResults() {
+bool Control::hasAutotuneResults() const {
   return hasResults;
 }
-float getKp() {
+
+float Control::getKp() const {
   return _autotune.getKp();
 }
 
-float getKi() {
+float Control::getKi() const {
   return _autotune.getKi();
 }
 
-float getKd() {
+float Control::getKd() const {
   return _autotune.getKd();
 }
 
-void setFan(float value) {
-  setFanSpeed(value);
+void Control::setFan(float value) {
+  _fan.setValue(value);
 }
 
-float getFan() {
-  return getFanSpeed();
+float Control::getFan() const {
+  return _fan.getValue();
 }
 
-void setTemperatureTarget(TemperatureTarget target) {
+void Control::setTemperatureTarget(TemperatureTarget target) {
   _temperatureTarget = target;
 }
 
-float getHeater() {
+float Control::getHeater() const {
   return _autotune.getOutput();
 }
 
-float getSetpoint() {
+float Control::getSetpoint() const {
   return _autotune.getSetpoint();
 }
 
-const char* getTemperatureTarget() {
+const char *Control::getTemperatureTarget() const {
   const char *result;
   if (_temperatureTarget == TemperatureTarget::BT) {
     result = "BT";
@@ -96,11 +95,11 @@ const char* getTemperatureTarget() {
   return result;
 }
 
-const char *getMode() {
+const char *Control::getMode() const {
   const char *result;
   if (_autotune.getOperationalMode() == OperationalMode::Auto) {
     result = "PID";
-  } else if  (_autotune.getOperationalMode() == OperationalMode::Tune) {
+  } else if (_autotune.getOperationalMode() == OperationalMode::Tune) {
     result = "Tuning";
   } else {
     result = "Manual";
@@ -108,11 +107,23 @@ const char *getMode() {
   return result;
 }
 
-void setMode(OperationalMode mode) {
+void Control::setMode(OperationalMode mode) {
   _autotune.setOperationalMode(mode);
 }
 
-void temperatureLoop(float etbt[3]) {
+float Control::getTemperature(const float etbt[3]) const {
+  float temp = 0.;
+  if (_temperatureTarget == TemperatureTarget::BT) {
+    temp = etbt[1];
+  } else if (_temperatureTarget == TemperatureTarget::ET) {
+    temp = etbt[0];
+  } else if (_temperatureTarget == TemperatureTarget::MAX) {
+    temp = max(etbt[0], etbt[1]);
+  }
+  return temp;
+}
+
+void Control::temperatureLoop(float etbt[3]) {
   if (tuningEnabled && _autotune.getOperationalMode() != OperationalMode::Tune) {
     // tuning completed, set status accordingly
     tuningEnabled = false;
@@ -120,25 +131,20 @@ void temperatureLoop(float etbt[3]) {
     setFan(30.f);
     setSetpoint(0);
   }
+
   unsigned long now = millis();
   unsigned long dt = (now - lastUpdate);
   if (dt < noUpdateBeforeMs) {
     return;
   }
-  float temp = 0.;
-  if (_temperatureTarget == TemperatureTarget::BT) {
-    temp = etbt[1];
-  }
-  if (_temperatureTarget == TemperatureTarget::ET) {
-    temp = etbt[0];
-  }
-  if (_temperatureTarget == TemperatureTarget::MAX) {
-    temp = max(etbt[0], etbt[1]);
-  }
+
+  float temp = getTemperature(etbt);
   _autotune.update(temp);
+
   float heaterValue = _autotune.getOutput();
   if (heaterValue > 0. && getFan() <= 10) {
     setFan(30.f);
   }
-  setHeaterPower(heaterValue);
+
+  _heater.setValue(heaterValue);
 }

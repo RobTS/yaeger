@@ -13,6 +13,8 @@ void recvMsg(uint8_t *data, size_t len){
 }
 
 void setupLogging(AsyncWebServer *server) {
+  Serial.begin(115200);
+  delay(1000); // Take some time to open up the Serial Monitor
 	WebSerial.begin(server);
   WebSerial.onMessage(recvMsg);
 }

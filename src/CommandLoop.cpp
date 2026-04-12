@@ -1,183 +1,187 @@
+#include "CommandLoop.h"
 #include "logging.h"
-#include "sensors.h"
 #include "Control.h"
-#include "RoasterPrefs.h"
 #include <ArduinoJson.h>
-#include <ESPAsyncWebServer.h>
 #include <cmath>
 #include <cstring>
+#include <Preferences.h>
+#include "preferenceKeys.h"
+#include "sensors.h"
 
-
-void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
-               AwsEventType type, void *arg, uint8_t *data, size_t len) {
-
-  switch (type) {
-  case WS_EVT_CONNECT:
-    logf("[%u] Connected!\n", client->id());
-    // client->text("Connected");
-
-    break;
-  case WS_EVT_DISCONNECT: {
-    logf("[%u] Disconnected!\n", client->id());
-    // turn off heater and set fan to 100%
-  } break;
-  case WS_EVT_DATA: {
-
-    AwsFrameInfo *info = (AwsFrameInfo *)arg;
-#ifdef DEBUG
-    logf("ws[%s][%u] %s-message[%llu]: ", server->url(), client->id(),
-         (info->opcode == WS_TEXT) ? "text" : "binary", info->len);
-    logf("final: %d\n", info->final);
-#endif
-    String msg = "";
-    /*if (info->opcode != WS_TEXT || !info->final) {*/
-    /*  break;*/
-    /*}*/
-
-    for (size_t i = 0; i < info->len; i++) {
-      msg += (char)data[i];
-    }
-#ifdef DEBUG
-    logf("msg: %s\n", msg.c_str());
-#endif
-
-    JsonDocument doc;
-
-    // DEBUG WEBSOCKET
-    // logf("[%u] get Text: %s\n", num, payload);
-
-    // Extract Values lt. https://arduinojson.org/v6/example/http-client/
-    // Artisan Anleitung: https://artisan-scope.org/devices/websockets/
-
-    deserializeJson(doc, msg);
-
-    long ln_id = doc["id"].as<long>();
-
-
-    if (!doc["Mode"].isNull() && strncmp(doc["Mode"].as<const char *>(), "Manual", 6) == 0) {
-      setMode(OperationalMode::Manual);
-    }
-
-    if (!doc["Mode"].isNull() && strncmp(doc["Mode"].as<const char *>(), "PID", 3) == 0) {
-      setMode(OperationalMode::Auto);
-    }
-
-    if (!doc["BurnerVal"].isNull()) {
-      float val = doc["BurnerVal"].as<float>();
-      logf("BurnerVal: %d\n", val);
-      // DimmerVal = doc["BurnerVal"].as<long>();
-      setHeater(val);
-    }
-
-    if (!doc["Setpoint"].isNull()) {
-      float setpoint = doc["Setpoint"].as<float>();
-      logf("Setpoint: %d\n", setpoint);
-      setSetpoint(setpoint);
-    }
-
-    if (!doc["FanVal"].isNull()) {
-      float fanVal = doc["FanVal"].as<float>();
-      logf("FanVal: %d\n", fanVal);
-      setFan(fanVal);
-    }
-
-    if (!doc["Target"].isNull()) {
-      const char *target = doc["Target"].as<const char *>();
-      if (strncmp(target, "BT", 2) == 0)
-        setTemperatureTarget(TemperatureTarget::BT);
-      if (strncmp(target, "ET", 2) == 0)
-        setTemperatureTarget(TemperatureTarget::ET);
-      if (strncmp(target, "MAX", 3) == 0)
-        setTemperatureTarget(TemperatureTarget::MAX);
-    }
-
-    // Send Values to Artisan over Websocket
-    const char *command = doc["command"].as<const char *>();
-    if (command != NULL && strncmp(command, "setBurner", 9) == 0) {
-      float val = doc["value"].as<float>();
-      logf("BurnerVal: %d\n", val);
-      setHeater(val);
-    }
-    if (command != NULL && strncmp(command, "setFan", 6) == 0) {
-      float val = doc["value"].as<float>();
-      logf("FanVal: %d\n", val);
-      setFan(val);
-    }
-
-    if (command != NULL && strncmp(command, "autotune", 8) == 0) {
-      if (getFan() < 30) setFan(60);
-      startAutotune();
-    }
-
-    if (command != NULL && strncmp(command, "setPreferences", 14) == 0) {
-      if (!doc["pidKp"].isNull() && !doc["pidKi"].isNull() && !doc["pidKd"].isNull()) {
-        float pidKp = doc["pidKp"].as<float>();
-        float pidKi = doc["pidKi"].as<float>();
-        float pidKd = doc["pidKd"].as<float>();
-        setFloatValue("pidKp", pidKp);
-        setFloatValue("pidKi", pidKi);
-        setFloatValue("pidKd", pidKd);
-        setPidValues(pidKp, pidKi, pidKd);
-      }
-
-      if (!doc["cooldownFanSpeed"].isNull()) {
-        long cooldownFanSpeed = doc["cooldownFanSpeed"].as<long>();
-        logf("cooldownFanSpeed: %d\n", cooldownFanSpeed);
-        setLongValue("coolFanSpeed", cooldownFanSpeed);
-      }
-    }
-
-    if (command != NULL && (strncmp(command, "setPreferences", 14) == 0 || strncmp(command, "getPreferences", 14) == 0)) {
-      JsonObject root = doc.to<JsonObject>();
-      JsonObject data = root["data"].to<JsonObject>();
-
-      root["id"] = ln_id;
-      data["type"] = "preferences";
-      data["pidKp"] = getFloatValue("pidKp", 1.0);
-      data["pidKi"] = getFloatValue("pidKi", 0.1);
-      data["pidKd"] = getFloatValue("pidKd", 0.01);
-      data["cooldownFanSpeed"] = getLongValue("coolFanSpeed", 65);
-    }
-
-    if (command != NULL && strncmp(command, "getData", 7) == 0) {
-      JsonObject root = doc.to<JsonObject>();
-      JsonObject data = root["data"].to<JsonObject>();
-      root["id"] = ln_id;
-      float etbt[3];
-      getETBTReadings(etbt);
-      data["type"] = "status";
-      data["ET"] = etbt[0]; // Med_ExhaustTemp.getMedian()
-      data["BT"] = etbt[1]; // Med_BeanTemp.getMedian();
-      data["Amb"] = etbt[2];
-      data["BurnerVal"] = getHeater();
-      data["Setpoint"] = getSetpoint();
-      data["Target"] = getTemperatureTarget();
-      data["Mode"] = getMode();
-      data["FanVal"] = getFan();
-      data["pidKp"] = getKp();
-      data["pidKi"] = getKi();
-      data["pidKd"] = getKd();
-    }
-
-    char buffer[200];                        // create temp buffer
-    size_t len = serializeJson(doc, buffer); // serialize to buffer
-    // DEBUG WEBSOCKET
-    log(buffer);
-
-    client->text(buffer);
-    // send message to client
-    // webSocket.sendTXT(num, "message here");
-
-    // send data to all connected clients
-    // webSocket.broadcastTXT("message here");
-  } break;
-  default: // send message to client
-    logf("unhandled message type: %d\n", type);
-    // webSocket.sendBIN(num, payload, length);
-    break;
-  }
+WSRequestHandler::WSRequestHandler(AsyncWebSocket *ws, Control *control, Preferences *preferences) {
+  using namespace std::placeholders;
+  this->control = control;
+  this->preferences = preferences;
+  ws->onEvent(std::bind(&WSRequestHandler::onWsEvent, this, _1, _2, _3, _4, _5, _6));
 }
 
-void setupMainLoop(AsyncWebSocket *ws) {
-  ws->onEvent(onWsEvent);
+void WSRequestHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
+                                 AwsEventType type, void *arg, uint8_t *data, size_t len) {
+  switch (type) {
+    case WS_EVT_CONNECT:
+      logf("[%u] Connected!\n", client->id());
+      // client->text("Connected");
+
+      break;
+    case WS_EVT_DISCONNECT: {
+      logf("[%u] Disconnected!\n", client->id());
+      // turn off heater and set fan to 100%
+    }
+    break;
+    case WS_EVT_DATA: {
+      auto *info = (AwsFrameInfo *) arg;
+
+      String msg = "";
+      /*if (info->opcode != WS_TEXT || !info->final) {*/
+      /*  break;*/
+      /*}*/
+
+      for (size_t i = 0; i < info->len; i++) {
+        msg += (char) data[i];
+      }
+
+
+      JsonDocument doc;
+
+      // DEBUG WEBSOCKET
+      // logf("[%u] get Text: %s\n", num, payload);
+
+      // Extract Values lt. https://arduinojson.org/v6/example/http-client/
+      // Artisan Anleitung: https://artisan-scope.org/devices/websockets/
+
+      deserializeJson(doc, msg);
+
+      long ln_id = doc["id"].as<long>();
+
+
+      if (!doc["Mode"].isNull() && strncmp(doc["Mode"].as<const char *>(), "Manual", 6) == 0) {
+        control->setMode(OperationalMode::Manual);
+      }
+
+      if (!doc["Mode"].isNull() && strncmp(doc["Mode"].as<const char *>(), "PID", 3) == 0) {
+        control->setMode(OperationalMode::Auto);
+      }
+
+      if (!doc["BurnerVal"].isNull()) {
+        auto val = doc["BurnerVal"].as<float>();
+        logf("BurnerVal: %d\n", val);
+        // DimmerVal = doc["BurnerVal"].as<long>();
+        control->setHeater(val);
+      }
+
+      if (!doc["Setpoint"].isNull()) {
+        auto setpoint = doc["Setpoint"].as<float>();
+        logf("Setpoint: %d\n", setpoint);
+        control->setSetpoint(setpoint);
+      }
+
+      if (!doc["FanVal"].isNull()) {
+        auto fanVal = doc["FanVal"].as<float>();
+        logf("FanVal: %d\n", fanVal);
+        control->setFan(fanVal);
+      }
+
+      if (!doc["Target"].isNull()) {
+        const char *target = doc["Target"].as<const char *>();
+        if (strncmp(target, "BT", 2) == 0)
+          control->setTemperatureTarget(TemperatureTarget::BT);
+        if (strncmp(target, "ET", 2) == 0)
+          control->setTemperatureTarget(TemperatureTarget::ET);
+        if (strncmp(target, "MAX", 3) == 0)
+          control->setTemperatureTarget(TemperatureTarget::MAX);
+      }
+
+      // Send Values to Artisan over Websocket
+      const char *command = doc["command"].as<const char *>();
+      if (command != nullptr && strncmp(command, "setBurner", 9) == 0) {
+        auto val = doc["value"].as<float>();
+        logf("BurnerVal: %d\n", val);
+        control->setHeater(val);
+      }
+      if (command != nullptr && strncmp(command, "setFan", 6) == 0) {
+        auto val = doc["value"].as<float>();
+        logf("FanVal: %d\n", val);
+        control->setFan(val);
+      }
+
+      if (command != nullptr && strncmp(command, "autotune", 8) == 0) {
+        if (control->getFan() < 30) control->setFan(60);
+        control->startAutotune();
+      }
+
+      if (command != nullptr && strncmp(command, "setPreferences", 14) == 0) {
+        if (!doc["pidKp"].isNull() && !doc["pidKi"].isNull() && !doc["pidKd"].isNull()) {
+          auto pidKp = doc["pidKp"].as<float>();
+          auto pidKi = doc["pidKi"].as<float>();
+          auto pidKd = doc["pidKd"].as<float>();
+          preferences->putFloat(pidPKey, pidKp);
+          preferences->putFloat(pidIKey, pidKi);
+          preferences->putFloat(pidDKey, pidKd);
+          control->setPidValues(pidKp, pidKi, pidKd);
+        }
+
+        if (!doc["cooldownFanSpeed"].isNull()) {
+          long cooldownFanSpeed = doc["cooldownFanSpeed"].as<long>();
+          logf("cooldownFanSpeed: %d\n", cooldownFanSpeed);
+          preferences->putLong(coolingFanKey, cooldownFanSpeed);
+        }
+
+
+        if (!doc["wifiSsid"].isNull() && !doc["wifiPass"].isNull()) {
+          log("Wifi Credentials found, saving...");
+          String wifiSSID = doc["wifiSsid"];
+          log(wifiSSID.c_str());
+          preferences->putString(wifiSSIDKey, wifiSSID);
+          String wifiPass = doc["wifiPass"];
+          log(wifiPass.c_str());
+          preferences->putString(wifiPassKey, wifiPass);
+        }
+      }
+
+      if (command != nullptr && (strncmp(command, "setPreferences", 14) == 0 || strncmp(command, "getPreferences", 14)
+                                 ==
+                                 0)) {
+        JsonObject root = doc.to<JsonObject>();
+        JsonObject resultData = root["data"].to<JsonObject>();
+
+        root["id"] = ln_id;
+        resultData["type"] = "preferences";
+        resultData["pidKp"] = preferences->getFloat(pidPKey, 1.0);
+        resultData["pidKi"] = preferences->getFloat(pidIKey, 0.1);
+        resultData["pidKd"] = preferences->getFloat(pidDKey, 0.01);
+        resultData["cooldownFanSpeed"] = preferences->getLong(coolingFanKey, 65);
+      }
+
+      if (command != nullptr && strncmp(command, "getData", 7) == 0) {
+        JsonObject root = doc.to<JsonObject>();
+        JsonObject resultData = root["data"].to<JsonObject>();
+        root["id"] = ln_id;
+        float etbt[3];
+        getETBTReadings(etbt);
+        resultData["type"] = "status";
+        resultData["ET"] = etbt[0]; // Med_ExhaustTemp.getMedian()
+        resultData["BT"] = etbt[1]; // Med_BeanTemp.getMedian();
+        resultData["Amb"] = etbt[2];
+        resultData["BurnerVal"] = control->getHeater();
+        resultData["Setpoint"] = control->getSetpoint();
+        resultData["Target"] = control->getTemperatureTarget();
+        resultData["Mode"] = control->getMode();
+        resultData["FanVal"] = control->getFan();
+        resultData["pidKp"] = control->getKp();
+        resultData["pidKi"] = control->getKi();
+        resultData["pidKd"] = control->getKd();
+      }
+
+      char buffer[200]; // create temp buffer
+      size_t len = serializeJson(doc, buffer); // serialize to buffer
+      // DEBUG WEBSOCKET
+      log(buffer);
+
+      client->text(buffer);
+    }
+    break;
+    default:
+      logf("unhandled message type: %d\n", type);
+      break;
+  }
 }

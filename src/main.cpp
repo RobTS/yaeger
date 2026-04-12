@@ -3,6 +3,7 @@
 #include <ESPAsyncWebServer.h>
 #include <ElegantOTA.h> //https://github.com/ayushsharma82/AsyncElegantOTA
 #include <LittleFS.h>
+#include <Preferences.h>
 
 #include "AsyncWebSocket.h"
 #include "CommandLoop.h"
@@ -14,10 +15,12 @@
 #include "sensors.h"
 #include "wifi_setup.h"
 #include "Control.h"
-#include "RoasterPrefs.h"
+#include "preferenceKeys.h"
 
 #define PIN 48
 Adafruit_NeoPixel pixels(1, PIN);
+Control *control;
+Preferences preferences;
 // for ota
 const char *host = "esp32 Roaster";
 // Create AsyncWebServer object on port 80
@@ -59,19 +62,21 @@ void onOTAEnd(bool success) {
 }
 
 void setup() {
-  Serial.begin(115200);
-  delay(1000); // Take some time to open up the Serial Monitor
+  setupLogging(&server);
+  log("Starting Setup");
   startSensors();
   pixels.begin();
   pixels.clear();
   pixels.setPixelColor(0, Adafruit_NeoPixel::Color(5, 0, 0));
   pixels.show();
 
-  // Wait for connection
-  setupWifi();
+  log("Setting up Wifi");
+  preferences.begin("preferences-v1");
+  setupWifi(&preferences);
   initDisplay();
   setWifiIP();
 
+  log("Init LittleFS");
   if (!LittleFS.begin(true)) {
     Serial.println("LittleFS failed");
   }
@@ -79,32 +84,34 @@ void setup() {
   server.serveStatic("/settings", LittleFS, "/").setDefaultFile("index.html");
   server.serveStatic("/editor", LittleFS, "/").setDefaultFile("index.html");
 
+  log("Init OTA");
   ElegantOTA.begin(&server); // Start ElegantOTA
   // ElegantOTA callbacks
   ElegantOTA.onStart(onOTAStart);
   ElegantOTA.onProgress(onOTAProgress);
   ElegantOTA.onEnd(onOTAEnd);
 
-  setupLogging(&server);
+
+
+  control = new Control(
+    preferences.getFloat("pidKp",1),
+    preferences.getFloat("pidKi",0.1),
+    preferences.getFloat("pidKd",0.01)
+  );
 
   // WebSocket handler
-  setupMainLoop(&ws);
+  new WSRequestHandler(&ws, control, &preferences);
+
   server.addHandler(&ws);
 
   // API
-  setupApi(&server);
+  setupApi(&server, &preferences);
 
   server.begin();
   log("HTTP server started");
   pixels.clear();
   pixels.setPixelColor(0, Adafruit_NeoPixel::Color(0, 5, 0));
   pixels.show();
-  setupPreferences();
-  setupControl(
-    getFloatValue("pidKp",1),
-    getFloatValue("pidKi",0.1),
-    getFloatValue("pidKd",0.01)
-  );
 }
 
 void loop() {
@@ -114,11 +121,11 @@ void loop() {
   takeReadings();
   float etbt[3];
   getETBTReadings(etbt);
-  temperatureLoop(etbt);
-  if (hasAutotuneResults()) {
-    setFloatValue("pidKp", getKp());
-    setFloatValue("pidKi", getKi());
-    setFloatValue("pidKd", getKd());
-    resetAutotune();
+  control->temperatureLoop(etbt);
+  if (control->hasAutotuneResults()) {
+    preferences.putFloat(pidPKey, control->getKp());
+    preferences.putFloat(pidIKey, control->getKi());
+    preferences.putFloat(pidDKey, control->getKd());
+    control->resetAutotune();
   }
 }

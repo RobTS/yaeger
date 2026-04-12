@@ -1,44 +1,69 @@
-#include <Arduino.h>
+#ifndef CONTROL_H
+#define CONTROL_H
+
 #include "vendor/AutoTunePID.h"
+#include "pwm.h"
 
 enum class TemperatureTarget {
-  ET,
   BT,
+  ET,
   MAX
 };
 
+class Control {
+private:
+  AutoTunePID _autotune;
+  TemperatureTarget _temperatureTarget;
+  PwmOutput _fan;
+  PwmOutput _heater;
+  const uint8_t noUpdateBeforeMs = 20; // 50 Hz
+  unsigned long lastUpdate;
+  bool tuningEnabled;
+  bool hasResults;
 
-void setupControl(float kp, float ki, float kd);
+  // Private helper methods
+  float getTemperature(const float etbt[3]) const;
 
-void temperatureLoop(float etbt[3]);
+public:
+  Control(float kp = 0, float ki = 0, float kd = 0);
+  ~Control() = default;
 
-void setSetpoint(float setpoint);
+  // Setup and initialization
+  void setup(float kp, float ki, float kd);
 
-void setHeater(float heaterVal);
+  // PID gain configuration
+  void setPidValues(float kp, float ki, float kd);
+  float getKp() const;
+  float getKi() const;
+  float getKd() const;
 
-void startAutotune();
+  // Setpoint control
+  void setSetpoint(float setpoint);
+  float getSetpoint() const;
 
-void setTemperatureTarget(TemperatureTarget target);
+  // Heater control
+  void setHeater(float value);
+  float getHeater() const;
 
-void setPidValues(float kp, float ki, float kd);
+  // Fan control
+  void setFan(float value);
+  float getFan() const;
 
-float getHeater();
+  // Temperature target selection
+  void setTemperatureTarget(TemperatureTarget target);
+  const char* getTemperatureTarget() const;
 
-float getSetpoint();
+  // Operational mode
+  void setMode(OperationalMode mode);
+  const char* getMode() const;
 
-const char *getTemperatureTarget();
+  // Autotuning
+  void startAutotune();
+  void resetAutotune();
+  bool hasAutotuneResults() const;
 
-const char *getMode();
+  // Main control loop
+  void temperatureLoop(float etbt[3]);
+};
 
-void setMode(OperationalMode mode);
-
-void setFan(float value);
-
-float getFan();
-
-float getKp();
-float getKi();
-float getKd();
-
-void resetAutotune();
-bool hasAutotuneResults();
+#endif // CONTROL_H
