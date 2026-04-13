@@ -1,20 +1,17 @@
 #include "pwm.h"
-#include "config.h"
 #include <Arduino.h>
-#include <vendor/ESP32_EnhancedPWM.h>
 #include <string>
 
-ESP32_EnhancedPWM enhancedPwm;
-
-PwmOutput::PwmOutput(int pin, float frequencyInput) {
-  enhancedPwm.begin(pin, 0, frequencyInput, 10, false, LEDC_AUTO_CLK);
-  enhancedPwm.setDuty(0);
+PwmOutput::PwmOutput(int pin, int frequencyInput, int dutyResolution, int channel)
+: _pin(pin), _currentValue(0.f), _maxDuty(pow(2, dutyResolution)) {
+  ledcAttachChannel(pin, frequencyInput, dutyResolution, channel);
 }
 
 void PwmOutput::setValue(float power) {
-  enhancedPwm.setDuty(power / 100.f);
+  this->_currentValue = max(min(power,100.f),0.f);
+  ledcWrite(this->_pin, this->_currentValue / 100.f * this->_maxDuty  );
 }
 
 float PwmOutput::getValue() const {
-  return enhancedPwm.getDuty() * 100.f;
+  return this->_currentValue;
 }

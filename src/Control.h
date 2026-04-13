@@ -3,6 +3,7 @@
 
 #include "vendor/AutoTunePID.h"
 #include "pwm.h"
+#include "sensor.h"
 
 enum class TemperatureTarget {
   BT,
@@ -33,13 +34,15 @@ private:
   TemperatureTarget _temperatureTarget;
   PwmOutput _fan;
   PwmOutput _heater;
+  Sensor _etSensor;
+  Sensor _btSensor;
   const uint8_t noUpdateBeforeMs = 20; // 50 Hz
   unsigned long lastUpdate;
   bool tuningEnabled;
   bool hasResults;
 
   // Private helper methods
-  float getTemperature(const float etbt[3]) const;
+  float getTemperature() const;
 
 public:
   Control(float kp, float ki, float kd, TemperatureTarget target);
@@ -63,6 +66,10 @@ public:
   void setFan(float value);
   float getFan() const;
 
+  float getExhaustTemp() const;
+  float getBeanTemp() const;
+  float getAmbientTemp() const;
+
   // Temperature target selection
   void setTemperatureTarget(TemperatureTarget target);
   const char* getTemperatureTarget() const;
@@ -77,7 +84,7 @@ public:
   bool hasAutotuneResults() const;
 
   // Main control loop
-  void temperatureLoop(float etbt[3]);
+  void loop();
 };
 
 #endif // CONTROL_H

@@ -7,8 +7,10 @@ Control::Control(float kp, float ki, float kd, TemperatureTarget target)
     lastUpdate(0),
     tuningEnabled(false),
     hasResults(false),
-    _fan(FAN_PIN, 20000),
-    _heater(HEATER_PIN, 50) {
+    _fan(FAN_PIN, 20000, 10, 0),
+    _heater(HEATER_PIN, 50, 10, 1),
+    _etSensor(MAX1CLK, MAX1CS, MAX1DO, "Exhaust"),
+    _btSensor(MAX2CLK, MAX2CS, MAX2DO, "Bean") {
   _autotune.setManualGains(kp, ki, kd);
   _autotune.enableAntiWindup(true, 0.8);
   _autotune.setOscillationMode(OscillationMode::Normal);
@@ -80,6 +82,18 @@ float Control::getSetpoint() const {
   return _autotune.getSetpoint();
 }
 
+float Control::getExhaustTemp() const {
+  return this->_etSensor.getValue();
+}
+
+float Control::getBeanTemp() const {
+  return this->_btSensor.getValue();
+}
+
+float Control::getAmbientTemp() const {
+  return this->_btSensor.getAmbient();
+}
+
 const char *Control::getTemperatureTarget() const {
   const char *result;
   if (_temperatureTarget == TemperatureTarget::BT) {
@@ -108,19 +122,23 @@ void Control::setMode(OperationalMode mode) {
   _autotune.setOperationalMode(mode);
 }
 
-float Control::getTemperature(const float etbt[3]) const {
-  float temp = 0.;
+float Control::getTemperature() const {
+  float et = this->_etSensor.getValue();
+  float bt = this->_btSensor.getValue();
+
   if (_temperatureTarget == TemperatureTarget::BT) {
-    temp = etbt[1];
-  } else if (_temperatureTarget == TemperatureTarget::ET) {
-    temp = etbt[0];
-  } else if (_temperatureTarget == TemperatureTarget::MAX) {
-    temp = max(etbt[0], etbt[1]);
+    return bt;
   }
-  return temp;
+  if (_temperatureTarget == TemperatureTarget::ET) {
+    return et;
+  }
+  if (_temperatureTarget == TemperatureTarget::MAX) {
+    return max(bt, et);
+  }
+  return 0.f;
 }
 
-void Control::temperatureLoop(float etbt[3]) {
+void Control::loop() {
   if (tuningEnabled && _autotune.getOperationalMode() != OperationalMode::Tune) {
     // tuning completed, set status accordingly
     tuningEnabled = false;
@@ -134,8 +152,10 @@ void Control::temperatureLoop(float etbt[3]) {
   if (dt < noUpdateBeforeMs) {
     return;
   }
+  this->_btSensor.takeReading();
+  this->_etSensor.takeReading();
 
-  float temp = getTemperature(etbt);
+  float temp = getTemperature();
   _autotune.update(temp);
 
   float heaterValue = _autotune.getOutput();

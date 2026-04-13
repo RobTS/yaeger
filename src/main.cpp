@@ -12,7 +12,6 @@
 #include "api.h"
 #include "display.h"
 #include "logging.h"
-#include "sensors.h"
 #include "wifi_setup.h"
 #include "Control.h"
 #include "preferenceKeys.h"
@@ -64,7 +63,6 @@ void onOTAEnd(bool success) {
 void setup() {
   setupLogging(&server);
   log("Starting Setup");
-  startSensors();
   pixels.begin();
   pixels.clear();
   pixels.setPixelColor(0, Adafruit_NeoPixel::Color(5, 0, 0));
@@ -119,10 +117,7 @@ void loop() {
   ElegantOTA.loop();
   ws.cleanupClients();
   delay(10);
-  takeReadings();
-  float etbt[3];
-  getETBTReadings(etbt);
-  control->temperatureLoop(etbt);
+  control->loop();
   if (control->hasAutotuneResults()) {
     preferences.putFloat(pidPKey, control->getKp());
     preferences.putFloat(pidIKey, control->getKi());

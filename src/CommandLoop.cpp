@@ -6,7 +6,6 @@
 #include <cstring>
 #include <Preferences.h>
 #include "preferenceKeys.h"
-#include "sensors.h"
 
 WSRequestHandler::WSRequestHandler(AsyncWebSocket *ws, Control *control, Preferences *preferences) {
   using namespace std::placeholders;
@@ -64,27 +63,27 @@ void WSRequestHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *c
 
       if (!doc["BurnerVal"].isNull()) {
         auto val = doc["BurnerVal"].as<float>();
-        logf("BurnerVal: %d\n", val);
+        logf("BurnerVal: %6.1lf\n", val);
         // DimmerVal = doc["BurnerVal"].as<long>();
         control->setHeater(val);
       }
 
       if (!doc["Setpoint"].isNull()) {
         auto setpoint = doc["Setpoint"].as<float>();
-        logf("Setpoint: %d\n", setpoint);
+        logf("Setpoint: %6.1lf\n", setpoint);
         control->setSetpoint(setpoint);
       }
 
       if (!doc["FanVal"].isNull()) {
         auto fanVal = doc["FanVal"].as<float>();
-        logf("FanVal: %d\n", fanVal);
+        logf("FanVal: %6.1lf\n", fanVal);
         control->setFan(fanVal);
       }
 
       if (!doc["Target"].isNull()) {
         String targetInput = doc["Target"];
         auto target = StringToTarget(targetInput);
-        control->setTemperatureTarget(TemperatureTarget::BT);
+        control->setTemperatureTarget(target);
         preferences->putString(temperatureTargetKey, targetInput);
       }
 
@@ -153,12 +152,11 @@ void WSRequestHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *c
         JsonObject root = doc.to<JsonObject>();
         JsonObject resultData = root["data"].to<JsonObject>();
         root["id"] = ln_id;
-        float etbt[3];
-        getETBTReadings(etbt);
+
         resultData["type"] = "status";
-        resultData["ET"] = etbt[0]; // Med_ExhaustTemp.getMedian()
-        resultData["BT"] = etbt[1]; // Med_BeanTemp.getMedian();
-        resultData["Amb"] = etbt[2];
+        resultData["ET"] = control->getExhaustTemp();
+        resultData["BT"] = control->getBeanTemp();
+        resultData["Amb"] = control->getAmbientTemp();
         resultData["BurnerVal"] = control->getHeater();
         resultData["Setpoint"] = control->getSetpoint();
         resultData["Target"] = control->getTemperatureTarget();
@@ -170,7 +168,7 @@ void WSRequestHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *c
       }
 
       char buffer[200]; // create temp buffer
-      size_t len = serializeJson(doc, buffer); // serialize to buffer
+      serializeJson(doc, buffer); // serialize to buffer
       // DEBUG WEBSOCKET
       log(buffer);
 
