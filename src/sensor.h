@@ -12,7 +12,7 @@ private:
   String _sensorName;
 
   // Timing and synchronization
-  const uint8_t _noUpdateBeforeMs = 20; // 50 Hz
+  const uint8_t _noUpdateBeforeMs = 5; // Lower than main loop for now
   unsigned long _lastUpdate;
 
   // Sensor readings: [0] = ET, [1] = BT, [2] = Ambient
