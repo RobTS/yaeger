@@ -2,16 +2,17 @@
 #include <Arduino.h>
 #include <string>
 
-PwmOutput::PwmOutput(int pin, int frequencyInput, int dutyResolution, int channel)
-: _pin(pin), _currentValue(0.f), _maxDuty(pow(2, dutyResolution)) {
-  ledcAttachChannel(pin, frequencyInput, dutyResolution, channel);
+PwmOutput::PwmOutput(int pin, float frequencyInput, int dutyResolution, int channel)
+: _pin(pin), _value(0.f) {
+  this->_pwm.begin(pin, channel, frequencyInput, dutyResolution, false, LEDC_USE_APB_CLK);
 }
 
 void PwmOutput::setValue(float power) {
-  this->_currentValue = max(min(power,100.f),0.f);
-  ledcWrite(this->_pin, this->_currentValue / 100.f * this->_maxDuty  );
+  this->_value = max(min(power,100.f),0.f);
+;
+  this->_pwm.setDutyNormalized(this->_value / 100.f);
 }
 
 float PwmOutput::getValue() const {
-  return this->_currentValue;
+  return this->_value;
 }

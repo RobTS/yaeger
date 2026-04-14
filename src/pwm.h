@@ -1,16 +1,17 @@
 #ifndef PWM_H
 #define PWM_H
+#include "vendor/ESP32_EnhancedPWM.h"
 
 
 class PwmOutput {
 private:
-  float _currentValue;
+  ESP32_EnhancedPWM _pwm;
   int _pin;
-  int _maxDuty;
+  float _value;
 
 public:
   PwmOutput(int pin,
-            int frequency,
+            float frequency,
             int dutyResolution,
             int channel);
 
