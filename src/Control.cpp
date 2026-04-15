@@ -2,13 +2,13 @@
 #include "config.h"
 
 Control::Control(float kp, float ki, float kd, TemperatureTarget target)
-  : _autotune(0, 90, TuningMethod::ZieglerNichols),
+  : _autotune(0, MAX_HEATER_POWER, TuningMethod::ZieglerNichols),
     _temperatureTarget(target),
     lastUpdate(0),
     tuningEnabled(false),
     hasResults(false),
-    _fan(FAN_PIN, 20000, 10, 0),
-    _heater(HEATER_PIN, 50, 10, 1),
+    _fan(FAN_PIN, FAN_FREQUENCY, 10, 0),
+    _heater(HEATER_PIN, HEATER_FREQUENCY, 10, 1),
     _etSensor(MAX1CLK, MAX1CS, MAX1DO, "Exhaust"),
     _btSensor(MAX2CLK, MAX2CS, MAX2DO, "Bean") {
   _autotune.setManualGains(kp, ki, kd);
@@ -36,8 +36,6 @@ void Control::setHeater(float value) {
 }
 
 void Control::startAutotune() {
-  setFan(55);
-  _autotune.setSetpoint(140);
   _autotune.setOperationalMode(OperationalMode::Tune);
   tuningEnabled = true;
 }

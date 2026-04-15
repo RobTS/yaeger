@@ -39,3 +39,9 @@
 #endif
 
 #define DEBUG
+
+
+// DEVICE PARAMETERS
+#define MAX_HEATER_POWER 90
+#define FAN_FREQUENCY 20000
+#define HEATER_FREQUENCY 50
