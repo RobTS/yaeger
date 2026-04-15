@@ -8,6 +8,7 @@
 #include <Preferences.h>
 #include <WiFi.h>
 
+#include "config.h"
 #include "preferenceKeys.h"
 
 
@@ -34,11 +35,11 @@ bool WiFiParams::hasCredentials() {
 
 
  String WiFiParams::getSSID() {
-  return this->preferences->getString(wifiSSIDKey, "");
+  return this->preferences->getString(wifiSSIDKey, INITIAL_WIFI_SSID);
 }
 
  String WiFiParams::getPass() {
-  return this->preferences->getString(wifiPassKey, "");
+  return this->preferences->getString(wifiPassKey, INITIAL_WIFI_PASS);
 }
 
 void setupAP(WiFiParams params) {
