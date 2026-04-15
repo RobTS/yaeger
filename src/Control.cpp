@@ -121,8 +121,8 @@ void Control::setMode(OperationalMode mode) {
 }
 
 float Control::getTemperature() const {
-  float et = this->_etSensor.getValue();
-  float bt = this->_btSensor.getValue();
+  float bt = this->_btSensor.getFilteredValue();
+  float et = this->_etSensor.getFilteredValue();
 
   if (_temperatureTarget == TemperatureTarget::BT) {
     return bt;

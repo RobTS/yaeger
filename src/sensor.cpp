@@ -32,6 +32,7 @@ void Sensor::takeReading() {
     this->handleThermocoupleFault();
   } else {
     this->_value = value;
+    this->_filteredValue = this->_valueFilter.process(value);
   }
   this->_ambient = this->_tc.readInternal();
   this->_lastUpdate = now;
@@ -55,6 +56,10 @@ void Sensor::handleThermocoupleFault() {
 
 float Sensor::getValue() const {
   return this->_value;
+}
+
+float Sensor::getFilteredValue() const {
+  return this->_filteredValue;
 }
 
 float Sensor::getAmbient() const {

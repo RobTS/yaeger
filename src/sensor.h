@@ -1,9 +1,8 @@
 #ifndef SENSORS_H
 #define SENSORS_H
-
-
 #include <Adafruit_MAX31855.h>
 #include <cstdint>
+#include "MovingAverageFilter.h"
 
 class Sensor {
 private:
@@ -13,10 +12,12 @@ private:
 
   // Timing and synchronization
   const uint8_t _noUpdateBeforeMs = 5; // Lower than main loop for now
+  MovingAverageFilter _valueFilter = MovingAverageFilter(5);
   unsigned long _lastUpdate;
 
   // Sensor readings: [0] = ET, [1] = BT, [2] = Ambient
   float _value;
+  float _filteredValue;
   float _ambient;
 
 
@@ -33,6 +34,8 @@ public:
   void takeReading();
 
   float getValue() const;
+
+  float getFilteredValue() const;
 
   float getAmbient() const;
 };
