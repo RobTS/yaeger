@@ -25,6 +25,8 @@ void WSRequestHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *c
     case WS_EVT_DISCONNECT: {
       logf("[%u] Disconnected!\n", client->id());
       // turn off heater and set fan to 100%
+      control->setHeater(0.f);
+      control->setFan(100.f);
     }
     break;
     case WS_EVT_DATA: {
