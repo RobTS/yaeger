@@ -94,7 +94,8 @@ void setup() {
   control = new Control(
     preferences.getFloat(pidPKey,1),
     preferences.getFloat(pidIKey,0.1),
-    preferences.getFloat(pidDKey,0.01)
+    preferences.getFloat(pidDKey,0.01),
+    StringToTarget(preferences.getString(temperatureTargetKey,"ET"))
   );
 
   // WebSocket handler
@@ -117,4 +118,10 @@ void loop() {
   ws.cleanupClients();
   delay(10);
   control->loop();
+  if (control->hasAutotuneResults()) {
+    preferences.putFloat(pidPKey, control->getKp());
+    preferences.putFloat(pidIKey, control->getKi());
+    preferences.putFloat(pidDKey, control->getKd());
+    control->resetAutotune();
+  }
 }
