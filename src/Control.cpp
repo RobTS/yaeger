@@ -1,5 +1,6 @@
 #include "Control.h"
 #include "config.h"
+#include <Arduino.h>
 
 
 const char *modeToChar(OperationalMode mode) {
@@ -152,6 +153,8 @@ void Control::loop() {
     setSetpoint(0);
   }
 
+void Control::loop()
+{
   unsigned long now = millis();
   unsigned long dt = (now - lastUpdate);
   if (dt < noUpdateBeforeMs) {
