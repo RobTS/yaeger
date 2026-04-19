@@ -39,3 +39,12 @@
 #endif
 
 #define DEBUG
+
+
+// DEVICE PARAMETERS
+#define MAX_HEATER_POWER 90
+#define FAN_FREQUENCY 20000
+#define HEATER_FREQUENCY 50
+#define INITIAL_WIFI_SSID ""
+#define INITIAL_WIFI_PASS ""
+
