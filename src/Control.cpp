@@ -1,5 +1,20 @@
 #include "Control.h"
 #include "config.h"
+#include <Arduino.h>
+
+
+const char *modeToChar(OperationalMode mode) {
+  const char *result;
+  if (mode == OperationalMode::Auto) {
+    result = "PID";
+  } else if (mode == OperationalMode::Tune) {
+    result = "Tuning";
+  } else {
+    result = "Manual";
+  }
+  return result;
+}
+
 
 Control::Control(float kp, float ki, float kd, TemperatureTarget target)
   : _autotune(0, MAX_HEATER_POWER, TuningMethod::ZieglerNichols),
@@ -104,21 +119,14 @@ const char *Control::getTemperatureTarget() const {
   return result;
 }
 
-const char *Control::getMode() const {
-  const char *result;
-  if (_autotune.getOperationalMode() == OperationalMode::Auto) {
-    result = "PID";
-  } else if (_autotune.getOperationalMode() == OperationalMode::Tune) {
-    result = "Tuning";
-  } else {
-    result = "Manual";
-  }
-  return result;
+OperationalMode Control::getMode() {
+  return _autotune.getOperationalMode();
 }
 
 void Control::setMode(OperationalMode mode) {
   _autotune.setOperationalMode(mode);
 }
+
 
 float Control::getTemperature() const {
   float bt = this->_btSensor.getFilteredValue();

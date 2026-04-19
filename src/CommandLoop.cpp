@@ -24,7 +24,11 @@ void WSRequestHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *c
       break;
     case WS_EVT_DISCONNECT: {
       logf("[%u] Disconnected!\n", client->id());
-      // turn off heater and set fan to 100%
+      // turn off heater and set fan to 100% when not under PID control
+      if (this->control->getMode() == OperationalMode::Manual) {
+        control->setHeater(0.f);
+        control->setFan(100.f);
+      }
     }
     break;
     case WS_EVT_DATA: {
@@ -160,7 +164,7 @@ void WSRequestHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *c
         resultData["BurnerVal"] = control->getHeater();
         resultData["Setpoint"] = control->getSetpoint();
         resultData["Target"] = control->getTemperatureTarget();
-        resultData["Mode"] = control->getMode();
+        resultData["Mode"] = modeToChar(control->getMode());
         resultData["FanVal"] = control->getFan();
         resultData["pidKp"] = control->getKp();
         resultData["pidKi"] = control->getKi();

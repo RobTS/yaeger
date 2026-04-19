@@ -5,6 +5,8 @@
 #include "pwm.h"
 #include "sensor.h"
 
+const char *modeToChar(OperationalMode mode);
+
 enum class TemperatureTarget {
   BT,
   ET,
@@ -76,7 +78,7 @@ public:
 
   // Operational mode
   void setMode(OperationalMode mode);
-  const char* getMode() const;
+  OperationalMode getMode();
 
   // Autotuning
   void startAutotune();
