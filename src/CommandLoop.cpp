@@ -24,9 +24,11 @@ void WSRequestHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *c
       break;
     case WS_EVT_DISCONNECT: {
       logf("[%u] Disconnected!\n", client->id());
-      // turn off heater and set fan to 100%
-      control->setHeater(0.f);
-      control->setFan(100.f);
+      // turn off heater and set fan to 100% when not under PID control
+      if (this->control->getMode() == OperationalMode::Manual) {
+        control->setHeater(0.f);
+        control->setFan(100.f);
+      }
     }
     break;
     case WS_EVT_DATA: {
@@ -54,6 +56,15 @@ void WSRequestHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *c
 
       long ln_id = doc["id"].as<long>();
 
+
+      if (!doc["Mode"].isNull() && strncmp(doc["Mode"].as<const char *>(), "Manual", 6) == 0) {
+        control->setMode(OperationalMode::Manual);
+      }
+
+      if (!doc["Mode"].isNull() && strncmp(doc["Mode"].as<const char *>(), "PID", 3) == 0) {
+        control->setMode(OperationalMode::Auto);
+      }
+
       if (!doc["BurnerVal"].isNull()) {
         auto val = doc["BurnerVal"].as<float>();
         logf("BurnerVal: %6.1lf\n", val);
@@ -61,10 +72,23 @@ void WSRequestHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *c
         control->setHeater(val);
       }
 
+      if (!doc["Setpoint"].isNull()) {
+        auto setpoint = doc["Setpoint"].as<float>();
+        logf("Setpoint: %6.1lf\n", setpoint);
+        control->setSetpoint(setpoint);
+      }
+
       if (!doc["FanVal"].isNull()) {
         auto fanVal = doc["FanVal"].as<float>();
         logf("FanVal: %6.1lf\n", fanVal);
         control->setFan(fanVal);
+      }
+
+      if (!doc["Target"].isNull()) {
+        String targetInput = doc["Target"];
+        auto target = StringToTarget(targetInput);
+        control->setTemperatureTarget(target);
+        preferences->putString(temperatureTargetKey, targetInput);
       }
 
       // Send Values to Artisan over Websocket
@@ -80,6 +104,11 @@ void WSRequestHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *c
         control->setFan(val);
       }
 
+      if (command != nullptr && strncmp(command, "autotune", 8) == 0) {
+        if (control->getFan() < 30) control->setFan(60);
+        control->startAutotune();
+      }
+
       if (command != nullptr && strncmp(command, "setPreferences", 14) == 0) {
         if (!doc["pidKp"].isNull() && !doc["pidKi"].isNull() && !doc["pidKd"].isNull()) {
           auto pidKp = doc["pidKp"].as<float>();
@@ -88,6 +117,7 @@ void WSRequestHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *c
           preferences->putFloat(pidPKey, pidKp);
           preferences->putFloat(pidIKey, pidKi);
           preferences->putFloat(pidDKey, pidKd);
+          control->setPidValues(pidKp, pidKi, pidKd);
         }
 
         if (!doc["cooldownFanSpeed"].isNull()) {
@@ -132,7 +162,13 @@ void WSRequestHandler::onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *c
         resultData["BT"] = control->getBeanTemp();
         resultData["Amb"] = control->getAmbientTemp();
         resultData["BurnerVal"] = control->getHeater();
+        resultData["Setpoint"] = control->getSetpoint();
+        resultData["Target"] = control->getTemperatureTarget();
+        resultData["Mode"] = modeToChar(control->getMode());
         resultData["FanVal"] = control->getFan();
+        resultData["pidKp"] = control->getKp();
+        resultData["pidKi"] = control->getKi();
+        resultData["pidKd"] = control->getKd();
       }
 
       char buffer[200]; // create temp buffer

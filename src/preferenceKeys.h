@@ -8,6 +8,8 @@ inline const char *pidPKey = "pidK";
 inline const char *pidIKey = "pidI";
 inline const char *pidDKey = "pidD";
 
+
+inline const char *temperatureTargetKey = "tempTarget";
 inline const char *coolingFanKey = "coolingFan";
 
 #endif
